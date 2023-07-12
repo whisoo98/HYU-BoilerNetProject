@@ -1,0 +1,5 @@
+Preprocessing
+python net/preprocess.py googletrends-2017/prepared_html/ -s googletrends-2017/50-30-100-split/ -w 1000 -t 50 --save googletrends_data
+
+Training
+python net/train.py googletrends_data --working_dir googletrends_train
