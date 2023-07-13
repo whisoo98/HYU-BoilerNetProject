@@ -6,64 +6,95 @@ import os
 import pickle
 import csv
 import math
+import numpy as np
 
 # import tensorflow as tf
 import torch
 import torch.nn as nn
 import torch.utils.data as data_utils
+from torch.nn.utils.rnn import pad_sequence
+from torch.utils.data import Dataset, DataLoader
 
 from sklearn.utils import class_weight
 
 from leaf_classifier import LeafClassifier
 
 
-def get_dataset(dataset_file, batch_size, repeat=True):
-    # def _read_example(example):
-    #     desc = {
-    #         'doc_feature_list': tf.io.VarLenFeature(tf.int64),
-    #         'doc_label_list': tf.io.VarLenFeature(tf.int64)
-    #     }
-    #     _, seq_features = tf.io.parse_single_sequence_example(example, sequence_features=desc)
-    #     return tf.sparse.to_dense(seq_features['doc_feature_list']), \
-    #            tf.sparse.to_dense(seq_features['doc_label_list'])
+class CustomDataset(Dataset):
+    def __init__(self, npy_file):
+        data = np.load(npy_file, allow_pickle=True)
+        self.features = data['doc_feature_list']
+        self.labels = data['doc_label_list']
 
-    def _read_example(example):
-        desc = {
-            'doc_feature_list': torch._utils._sparse.Int64Tensor,
-            'doc_label_list': torch._utils._sparse.Int64Tensor
-        }
-        sequence_features, _ = torch._utils._reconstruct_from_sparse(torch._utils._parse_sequence_example(example, sequence_features=desc))
-        return sequence_features['doc_feature_list'].to_dense(), sequence_features['doc_label_list'].to_dense()
+    def __len__(self):
+        return len(self.features)
 
-    # buffer_size = 10 * batch_size
-    # dataset = tf.data.TFRecordDataset([dataset_file]) \
-    #     .map(_read_example, num_parallel_calls=4) \
-    #     .prefetch(buffer_size) \
-    #     .padded_batch(
-    #         batch_size=batch_size,
-    #         padded_shapes=([None, None], [None, 1]),
-    #         padding_values=(tf.constant(0, dtype=tf.int64), tf.constant(0, dtype=tf.int64))) \
-    #     .shuffle(buffer_size=buffer_size)
-    # if repeat:
-    #     return dataset.repeat()
-    # return dataset
+    def __getitem__(self, idx):
+        return self.features[idx], self.labels[idx]
 
-    buffer_size = 10 * batch_size
-    dataset = torch.load(dataset_file)
-    print(dataset)
-    dataset = data_utils.TensorDataset([dataset_file])
-    dataset = dataset.map(_read_example, num_workers=4)
-    # 파일에서 데이터셋 로드
-    dataset = torch.load(dataset_file).map(_read_example, num_workers=4)
+def pad_collate(batch):
+    (xx, yy) = zip(*batch)
+    x_lens = [len(x) for x in xx]
+    y_lens = [len(y) for y in yy]
 
-    # 데이터 프리페치와 배치 패딩
-    dataset = dataset.prefetch(buffer_size)
-    dataset = data_utils.PaddingDataset(dataset, padding_values=(torch.tensor(0, dtype=torch.int64), torch.tensor(0, dtype=torch.int64)))
-    dataset = data_utils.DataLoader(dataset, batch_size=batch_size, shuffle=True)
+    xx_pad = pad_sequence(xx, batch_first=True, padding_value=0)
+    yy_pad = pad_sequence(yy, batch_first=True, padding_value=0)
 
-    if repeat:
-        return data_utils.RepeatDataset(dataset)
-    return dataset
+    return xx_pad, yy_pad
+
+def get_dataset(npy_file, batch_size, repeat=True):
+    print(npy_file)
+    dataset = CustomDataset(npy_file)
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, collate_fn=pad_collate)
+    return dataloader
+
+# def get_dataset(dataset_file, batch_size, repeat=True):
+#     # def _read_example(example):
+#     #     desc = {
+#     #         'doc_feature_list': tf.io.VarLenFeature(tf.int64),
+#     #         'doc_label_list': tf.io.VarLenFeature(tf.int64)
+#     #     }
+#     #     _, seq_features = tf.io.parse_single_sequence_example(example, sequence_features=desc)
+#     #     return tf.sparse.to_dense(seq_features['doc_feature_list']), \
+#     #            tf.sparse.to_dense(seq_features['doc_label_list'])
+
+#     def _read_example(example):
+#         desc = {
+#             'doc_feature_list': torch._utils._sparse.Int64Tensor,
+#             'doc_label_list': torch._utils._sparse.Int64Tensor
+#         }
+#         sequence_features, _ = torch._utils._reconstruct_from_sparse(torch._utils._parse_sequence_example(example, sequence_features=desc))
+#         return sequence_features['doc_feature_list'].to_dense(), sequence_features['doc_label_list'].to_dense()
+
+#     # buffer_size = 10 * batch_size
+#     # dataset = tf.data.TFRecordDataset([dataset_file]) \
+#     #     .map(_read_example, num_parallel_calls=4) \
+#     #     .prefetch(buffer_size) \
+#     #     .padded_batch(
+#     #         batch_size=batch_size,
+#     #         padded_shapes=([None, None], [None, 1]),
+#     #         padding_values=(tf.constant(0, dtype=tf.int64), tf.constant(0, dtype=tf.int64))) \
+#     #     .shuffle(buffer_size=buffer_size)
+#     # if repeat:
+#     #     return dataset.repeat()
+#     # return dataset
+
+#     buffer_size = 10 * batch_size
+#     dataset = torch.load(dataset_file)
+#     print(dataset)
+#     dataset = data_utils.TensorDataset([dataset_file])
+#     dataset = dataset.map(_read_example, num_workers=4)
+#     # 파일에서 데이터셋 로드
+#     dataset = torch.load(dataset_file).map(_read_example, num_workers=4)
+
+#     # 데이터 프리페치와 배치 패딩
+#     dataset = dataset.prefetch(buffer_size)
+#     dataset = data_utils.PaddingDataset(dataset, padding_values=(torch.tensor(0, dtype=torch.int64), torch.tensor(0, dtype=torch.int64)))
+#     dataset = data_utils.DataLoader(dataset, batch_size=batch_size, shuffle=True)
+
+#     if repeat:
+#         return data_utils.RepeatDataset(dataset)
+#     return dataset
 
 
 def get_class_weights(train_set_file):

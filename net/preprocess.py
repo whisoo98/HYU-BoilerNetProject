@@ -158,17 +158,17 @@ def save(save_path, word_map, tag_map, train_set, dev_set=None, test_set=None):
     write_npy(train_file, train_set, word_map, tag_map)
     info['num_train_examples'] = len(train_set)
 
-    # if dev_set is not None:
-    #     dev_file = os.path.join(save_path, 'dev.npy')
-    #     print('writing {}...'.format(dev_file))
-    #     write_npy(dev_file, dev_set, word_map, tag_map)
-    #     info['num_dev_examples'] = len(dev_set)
+    if dev_set is not None:
+        dev_file = os.path.join(save_path, 'dev.npy')
+        print('writing {}...'.format(dev_file))
+        write_npy(dev_file, dev_set, word_map, tag_map)
+        info['num_dev_examples'] = len(dev_set)
 
-    # if test_set is not None:
-    #     test_file = os.path.join(save_path, 'test.npy')
-    #     print('writing {}...'.format(test_file))
-    #     write_npy(test_file, test_set, word_map, tag_map)
-    #     info['num_test_examples'] = len(test_set)
+    if test_set is not None:
+        test_file = os.path.join(save_path, 'test.npy')
+        print('writing {}...'.format(test_file))
+        write_npy(test_file, test_set, word_map, tag_map)
+        info['num_test_examples'] = len(test_set)
 
     info_file = os.path.join(save_path, 'info.pkl')
     with open(info_file, 'wb') as fp:
