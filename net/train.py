@@ -19,12 +19,13 @@ from sklearn.utils import class_weight
 
 from leaf_classifier import LeafClassifier
 
+from pprint import pprint
 
 class CustomDataset(Dataset):
     def __init__(self, npy_file):
         data = np.load(npy_file, allow_pickle=True)
-        self.features = data['doc_feature_list']
-        self.labels = data['doc_label_list']
+        self.features = data[0]['doc_feature_list']
+        self.labels = data[0]['doc_label_list']
 
     def __len__(self):
         return len(self.features)
@@ -36,7 +37,11 @@ def pad_collate(batch):
     (xx, yy) = zip(*batch)
     x_lens = [len(x) for x in xx]
     y_lens = [len(y) for y in yy]
-
+    # pprint(batch)
+    # pprint(xx)
+    # pprint(yy)
+    xx = torch.Tensor(np.array(xx))
+    yy = torch.Tensor(np.array(yy))
     xx_pad = pad_sequence(xx, batch_first=True, padding_value=0)
     yy_pad = pad_sequence(yy, batch_first=True, padding_value=0)
 
@@ -46,6 +51,8 @@ def get_dataset(npy_file, batch_size, repeat=True):
     print(npy_file)
     dataset = CustomDataset(npy_file)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, collate_fn=pad_collate)
+    if repeat:
+        pass
     return dataloader
 
 # def get_dataset(dataset_file, batch_size, repeat=True):
@@ -101,7 +108,7 @@ def get_class_weights(train_set_file):
     y_train = []
     for _, y in get_dataset(train_set_file, 1, False):
         y_train.extend(y.numpy().flatten())
-    return class_weight.compute_class_weight('balanced', [0, 1], y_train)
+    return class_weight.compute_class_weight(class_weight='balanced', classes=[0, 1], y=y_train)
 
 
 def main():
@@ -163,10 +170,12 @@ def main():
         for arg in vars(args):
             writer.writerow([arg, getattr(args, arg)])
 
-    clf.train(train_dataset, train_steps, args.epochs, log_file, ckpt_dir, class_weights,
-              dev_dataset, info.get('num_dev_examples'),
-              test_dataset, info.get('num_test_examples'),
-              args.interval)
+    # clf.train1(train_dataset, train_steps, args.epochs, log_file, ckpt_dir, class_weights,
+    #           dev_dataset, info.get('num_dev_examples'),
+    #           test_dataset, info.get('num_test_examples'),
+    #           args.interval)
+    optimizer = torch.optim.Adam(clf.parameters(), lr=0.001)
+    clf.train1(train_dataset, optimizer,nn.BCELoss(), 'cpu')
 
 
 if __name__ == '__main__':

@@ -128,15 +128,17 @@ def get_doc_inputs(docs, word_map, tag_map):
 def write_npy(filename, dataset, word_map, tag_map):
     """Write the dataset to a .pth file."""
     # with tf.io.TFRecordWriter(filename) as writer:
-    data = []
+    data = [{'doc_feature_list': [], 'doc_label_list': []}]
     for doc_feature_list, doc_label_list in get_doc_inputs(dataset, word_map, tag_map):
-        f = {'doc_feature_list': doc_feature_list, 'doc_label_list': doc_label_list}
+        data[0]['doc_feature_list'].append(doc_feature_list)
+        data[0]['doc_label_list'].append(doc_label_list)
+        # f = {'doc_feature_list': doc_feature_list, 'doc_label_list': doc_label_list}
         # feature_lists = tf.train.FeatureLists(feature_list=f)
         # example = {'feature_lists': f}
-        data.append(f)
+        # data.append(f)
     data = np.array(data)
     # np.savez(file=filename,)
-    np.save(file = filename, arr = data)
+    np.save(file = filename, arr = data, allow_pickle=True)
 
 
 def save(save_path, word_map, tag_map, train_set, dev_set=None, test_set=None):
