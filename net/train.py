@@ -94,18 +94,18 @@ def main():
         train_steps = math.ceil(info['num_train_examples'] / args.batch_size)
 
     # train_set_file = os.path.join(args.DATA_DIR, 'train.tfrecords')
-    train_set_file = os.path.join(args.DATA_DIR, 'train.pth')
+    train_set_file = os.path.join(args.DATA_DIR, 'train.npy')
     train_dataset = get_dataset(train_set_file, args.batch_size)
 
     # dev_set_file = os.path.join(args.DATA_DIR, 'dev.tfrecords')
-    dev_set_file = os.path.join(args.DATA_DIR, 'dev.pth')
+    dev_set_file = os.path.join(args.DATA_DIR, 'dev.npy')
     if os.path.isfile(dev_set_file):
         dev_dataset = get_dataset(dev_set_file, 1, repeat=False)
     else:
         dev_dataset = None
     
     # test_set_file = os.path.join(args.DATA_DIR, 'test.tfrecords')
-    test_set_file = os.path.join(args.DATA_DIR, 'test.pth')
+    test_set_file = os.path.join(args.DATA_DIR, 'test.npy')
     if os.path.isfile(test_set_file):
         test_dataset = get_dataset(test_set_file, 1, repeat=False)
     else:
