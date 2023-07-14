@@ -172,7 +172,9 @@ def main():
     #           args.interval)
     optimizer = torch.optim.Adam(clf.parameters(), lr=0.001)
     clf.train1(train_dataset, optimizer,nn.BCELoss(), 'cpu')
-    print("accuracy:", clf.evaluate(test_dataset, 'cpu'))
+    acc = clf.evaluate(test_dataset, 'cpu')
+    print("accuracy 0 :", acc[0])
+    print("accuracy 1 :", acc[1])
 
 if __name__ == '__main__':
     main()

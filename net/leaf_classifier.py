@@ -78,6 +78,7 @@ class LeafClassifier(nn.Module):
             nn.Linear(self.dense_size, 1),
             nn.Sigmoid()
         )
+
         return model
 
     
@@ -97,21 +98,29 @@ class LeafClassifier(nn.Module):
             optimizer.step()
             train_loss += loss.item()
         return train_loss
+    
     def evaluate(self, train_loader, device):
         self.eval()
-        result = 1
-        total = 1
+        result0 = 0
+        total0 = 0
+        result1 = 0
+        total1 = 0
         for data, label in train_loader:
             data = data.to(device)
             data = data.to(torch.float32)
             label = label.to(torch.float32).squeeze()
             output = self.model.forward(data).squeeze()
-            total += len(label)
+            # print(label)
+            # print(output)
+            # total += len(label)
             #print(label.shape)
             #print(output.shape)
+            total1 += sum(label)
+            total0 += len(label) - sum(label)
             for i in range(len(label)):
+                
                 if output[i] >= 0.5 and label[i] == 1:
-                    result += 1
+                    result1 += 1
                 elif output[i] <= 0.5 and label[i] == 0:
-                    result += 1
-        return result // total
+                    result0 += 1
+        return (result0 / total0 * 100, result1 / total1 * 100)
