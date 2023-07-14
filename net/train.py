@@ -26,7 +26,8 @@ class CustomDataset(Dataset):
         data = np.load(npy_file, allow_pickle=True)
         self.features = data[0]['doc_feature_list']
         self.labels = data[0]['doc_label_list']
-
+        print(len(self.features[0]))
+        print(len(self.labels[0]))
     def __len__(self):
         return len(self.features)
 
@@ -35,13 +36,10 @@ class CustomDataset(Dataset):
 
 def pad_collate(batch):
     (xx, yy) = zip(*batch)
-    x_lens = [len(x) for x in xx]
-    y_lens = [len(y) for y in yy]
-    # pprint(batch)
-    # pprint(xx)
-    # pprint(yy)
-    xx = torch.Tensor(np.array(xx))
-    yy = torch.Tensor(np.array(yy))
+    # 텐서 변환을 하지 않고 pad_sequence에 리스트를 전달합니다.
+    xx = [torch.tensor(x) for x in xx]
+    yy = [torch.tensor(y) for y in yy]
+    # pad_sequence는 텐서의 배치를 입력받아 동일한 길이로 패딩합니다.
     xx_pad = pad_sequence(xx, batch_first=True, padding_value=0)
     yy_pad = pad_sequence(yy, batch_first=True, padding_value=0)
 
@@ -51,8 +49,6 @@ def get_dataset(npy_file, batch_size, repeat=True):
     print(npy_file)
     dataset = CustomDataset(npy_file)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, collate_fn=pad_collate)
-    if repeat:
-        pass
     return dataloader
 
 # def get_dataset(dataset_file, batch_size, repeat=True):
@@ -176,7 +172,7 @@ def main():
     #           args.interval)
     optimizer = torch.optim.Adam(clf.parameters(), lr=0.001)
     clf.train1(train_dataset, optimizer,nn.BCELoss(), 'cpu')
-
+    print("accuracy:", clf.evaluate(test_dataset, 'cpu'))
 
 if __name__ == '__main__':
     main()

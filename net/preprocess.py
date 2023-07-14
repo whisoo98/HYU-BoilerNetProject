@@ -129,7 +129,11 @@ def write_npy(filename, dataset, word_map, tag_map):
     """Write the dataset to a .pth file."""
     # with tf.io.TFRecordWriter(filename) as writer:
     data = [{'doc_feature_list': [], 'doc_label_list': []}]
-    for doc_feature_list, doc_label_list in get_doc_inputs(dataset, word_map, tag_map):
+    for idx, (doc_feature_list, doc_label_list) in enumerate(get_doc_inputs(dataset, word_map, tag_map)):
+        print(idx, "th length of feature list:",len(doc_feature_list))
+        print(idx, "th length of label list:",len(doc_label_list))
+        print(idx, "th feature list:",len(doc_feature_list[0]))
+        print(idx, "th label list:",doc_label_list[0])
         data[0]['doc_feature_list'].append(doc_feature_list)
         data[0]['doc_label_list'].append(doc_label_list)
         # f = {'doc_feature_list': doc_feature_list, 'doc_label_list': doc_label_list}
