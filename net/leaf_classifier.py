@@ -11,12 +11,14 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
+from transformers import BertModel, BertConfig, BertTokenizer
 
 import numpy as np
 from sklearn.utils import class_weight
 from sklearn.metrics import precision_recall_fscore_support
 from tqdm import tqdm
 
+tokenizer = BertTokenizer.from_pretrained('bert-base-multilingual-cased')
 
 class Metrics:
     """Calculate metrics for a dev-/testset and add them to the logs."""
@@ -53,50 +55,100 @@ class Saver:
 
 class LeafClassifier(nn.Module):
     """This classifier assigns labels to sequences based on words and HTML tags."""
-    def __init__(self, input_size, num_layers, hidden_size, dropout, dense_size):
-        """Construct the network."""
+    # def __init__(self, input_size, num_layers, hidden_size, dropout, dense_size):
+    #     """Construct the network."""
+    #     super(LeafClassifier, self).__init__()
+    #     self.input_size = input_size
+    #     self.num_layers = num_layers
+    #     self.hidden_size = hidden_size
+    #     self.dropout = dropout
+    #     self.dense_size = dense_size
+    #     self.model= self._get_model()
+
+    # # def forward(self, input):
+    # #     result = []
+    # #     for x in input:
+    # #         result.append(self.model(x))
+    # #     return torch.tensor(result)
+    
+    # def forward(self, input, attention_mask):
+    #     result = []
+    #     for x, mask in zip(input, attention_mask):
+    #         result.append(self.model(x, mask))
+    #     return torch.cat(result, dim=0)
+
+    # def _get_model(self):
+    #     model = nn.Sequential(
+    #         nn.Linear(self.input_size, self.dense_size),
+    #         nn.ReLU(),
+    #         nn.Linear(self.dense_size, self.dense_size),
+    #         nn.ReLU(),
+    #         nn.Linear(self.dense_size, 1),
+    #         nn.Sigmoid()
+    #     )
+
+    #     return model
+    def __init__(self, num_layers, hidden_size, dropout, dense_size):
         super(LeafClassifier, self).__init__()
-        self.input_size = input_size
         self.num_layers = num_layers
         self.hidden_size = hidden_size
         self.dropout = dropout
         self.dense_size = dense_size
-        self.model= self._get_model()
+        self.model = self._get_model()
 
-    def forward(self, input):
+    def forward(self, input, attention_mask):
         result = []
-        for x in input:
-            result.append(self.model(x))
-        return torch.tensor(result)
+        for x, mask in zip(input, attention_mask):
+            result.append(self.model(x, mask))
+        return torch.cat(result, dim=0)
 
     def _get_model(self):
-        model = nn.Sequential(
-            nn.Linear(self.input_size, self.dense_size),
+        bert_config = BertConfig.from_pretrained('bert-base-multilingual-cased')
+        bert_model = BertModel(config=bert_config)
+        bert_model.resize_token_embeddings(len(tokenizer))  # 추가: tokenizer에 맞게 토큰 임베딩 크기 조정
+        classifier = nn.Sequential(
+            nn.Dropout(self.dropout),
+            nn.Linear(self.hidden_size, self.dense_size),
             nn.ReLU(),
             nn.Linear(self.dense_size, self.dense_size),
             nn.ReLU(),
             nn.Linear(self.dense_size, 1),
             nn.Sigmoid()
         )
-
+        model = nn.Sequential(
+            bert_model,
+            classifier
+        )
         return model
-
     
-    def train1(self, train_loader, optimizer, criterion, device):
-        self.train()
-        train_loss = 0
-        for batch_idx, (data, label) in enumerate(train_loader):
-            data = data.to(device)
-            optimizer.zero_grad()
-            data = data.to(torch.float32)
-            label = label.to(torch.float32)
-            output = self.model.forward(data).squeeze()
-            print(output.shape)
-            print(label.shape)
-            loss = criterion(output, label)
-            loss.backward()
-            optimizer.step()
-            train_loss += loss.item()
+    def train1(self, train_loader, optimizer, loss_fn, epochs=20, device='cpu'):
+        print(len(train_loader))
+        for _ in range(epochs):
+            self.train()
+            train_loss = 0
+            
+            for batch_idx, (data, label) in enumerate(train_loader):
+                data = data.to(device)
+                optimizer.zero_grad()
+                print("[--------------------DATA-----------------------]")
+                print(data.dim())
+                print(data.shape)
+                print("[--------------------DATA-----------------------]")
+                data = data.to(torch.float32)
+                
+                label = label.to(torch.float32)
+                padding_token = 0
+                # attention_mask = np.array([[[1 if token != padding_token else 0 for token in data[i][j]] for j in range(len(data[i]))] for i in range(len(data))])
+                # attention_mask = torch.tensor(attention_mask)
+                attention_mask = torch.where(data != 0, torch.tensor(1), torch.tensor(0))
+                # output = self.model.forward(input=data, attention_mask=attention_mask).squeeze()
+                output = self.forward(input=data, attention_mask=attention_mask).squeeze()
+                print(output.shape)
+                print(label.shape)
+                loss = loss_fn(output, label)
+                loss.backward()
+                optimizer.step()
+                train_loss += loss.item()
         return train_loss
     
     def evaluate(self, train_loader, device):
@@ -109,7 +161,14 @@ class LeafClassifier(nn.Module):
             data = data.to(device)
             data = data.to(torch.float32)
             label = label.to(torch.float32).squeeze()
-            output = self.model.forward(data).squeeze()
+            padding_token = 0
+            # attention_mask = np.array([[[1 if token != padding_token else 0 for token in data[i][j]] for j in range(len(data[i]))] for i in range(len(data))])
+            # attention_mask = torch.tensor(attention_mask)
+            attention_mask = torch.where(data != 0, torch.tensor(1), torch.tensor(0))
+            output = self.forward(input=data, attention_mask=attention_mask).squeeze()
+            # output = self.model.forward(input=data, attention_mask=attention_mask).squeeze()
+            
+            # output = self.model.forward(data, attention_mask).squeeze()
             # print(label)
             # print(output)
             # total += len(label)

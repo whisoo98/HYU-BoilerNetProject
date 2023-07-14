@@ -37,8 +37,8 @@ class CustomDataset(Dataset):
 def pad_collate(batch):
     (xx, yy) = zip(*batch)
     # 텐서 변환을 하지 않고 pad_sequence에 리스트를 전달합니다.
-    xx = [torch.tensor(x) for x in xx]
-    yy = [torch.tensor(y) for y in yy]
+    xx = [torch.tensor(np.array(x)) for x in xx]
+    yy = [torch.tensor(np.array(y)) for y in yy]
     # pad_sequence는 텐서의 배치를 입력받아 동일한 길이로 패딩합니다.
     xx_pad = pad_sequence(xx, batch_first=True, padding_value=0)
     yy_pad = pad_sequence(yy, batch_first=True, padding_value=0)
@@ -148,11 +148,12 @@ def main():
     class_weights = get_class_weights(train_set_file)
     print('using class weights {}'.format(class_weights))
 
-    kwargs = {'input_size': info['num_words'] + info['num_tags'],
-              'hidden_size': args.hidden_units,
-              'num_layers': args.num_layers,
-              'dropout': args.dropout,
-              'dense_size': args.dense_size}
+    kwargs = {
+        # 'input_size': info['num_words'] + info['num_tags'],
+        'hidden_size': args.hidden_units,
+        'num_layers': args.num_layers,
+        'dropout': args.dropout,
+        'dense_size': args.dense_size}
     clf = LeafClassifier(**kwargs)
 
     ckpt_dir = os.path.join(args.working_dir, 'ckpt')
@@ -171,7 +172,7 @@ def main():
     #           test_dataset, info.get('num_test_examples'),
     #           args.interval)
     optimizer = torch.optim.Adam(clf.parameters(), lr=0.001)
-    clf.train1(train_dataset, optimizer,nn.BCELoss(), 'cpu')
+    clf.train1(train_loader=train_dataset, optimizer=optimizer, loss_fn=nn.BCELoss(), epochs=args.epochs, device='cpu')
     acc = clf.evaluate(test_dataset, 'cpu')
     print("accuracy 0 :", acc[0])
     print("accuracy 1 :", acc[1])
