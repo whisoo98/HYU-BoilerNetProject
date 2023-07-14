@@ -64,23 +64,21 @@ class LeafClassifier(nn.Module):
         self.model= self._get_model()
 
     def forward(self, input):
-        return self.model(input)
+        result = []
+        for x in input:
+            result.append(self.model(x))
+        return torch.tensor(result)
 
     def _get_model(self):
-        model = nn.Transformer(d_model=self.input_size, nhead=4, num_encoder_layers=self.num_layers,
-                               num_decoder_layers=self.num_layers, dim_feedforward=self.hidden_size,
-                               dropout=self.dropout)
-        model.encoder = nn.Sequential(
+        model = nn.Sequential(
             nn.Linear(self.input_size, self.dense_size),
-            nn.ReLU()
+            nn.ReLU(),
+            nn.Linear(self.dense_size, self.dense_size),
+            nn.ReLU(),
+            nn.Linear(self.dense_size, 1),
+            nn.Sigmoid()
         )
-        model.decoder = nn.Sequential(
-            nn.Linear(self.input_size, self.dense_size),
-            nn.ReLU()
-        )
-        model.final_layer = nn.Linear(self.dense_size, 1)
-        model.sigmoid = nn.Sigmoid()
-        model.argmax = nn.MaxPool1d(2)
+
         return model
 
     
@@ -90,13 +88,39 @@ class LeafClassifier(nn.Module):
         for batch_idx, (data, label) in enumerate(train_loader):
             data = data.to(device)
             optimizer.zero_grad()
-            data = data.to(torch.float64)
-            label = label.to(torch.float64)
-            print(data.dtype)
-            print(label.dtype)
-            output = self.model.forward(data)
+            data = data.to(torch.float32)
+            label = label.to(torch.float32)
+            output = self.model.forward(data).squeeze()
+            print(output.shape)
+            print(label.shape)
             loss = criterion(output, label)
             loss.backward()
             optimizer.step()
             train_loss += loss.item()
         return train_loss
+    
+    def evaluate(self, train_loader, device):
+        self.eval()
+        result0 = 0
+        total0 = 0
+        result1 = 0
+        total1 = 0
+        for data, label in train_loader:
+            data = data.to(device)
+            data = data.to(torch.float32)
+            label = label.to(torch.float32).squeeze()
+            output = self.model.forward(data).squeeze()
+            # print(label)
+            # print(output)
+            # total += len(label)
+            #print(label.shape)
+            #print(output.shape)
+            total1 += sum(label)
+            total0 += len(label) - sum(label)
+            for i in range(len(label)):
+                
+                if output[i] >= 0.5 and label[i] == 1:
+                    result1 += 1
+                elif output[i] <= 0.5 and label[i] == 0:
+                    result0 += 1
+        return (result0 / total0 * 100, result1 / total1 * 100)
