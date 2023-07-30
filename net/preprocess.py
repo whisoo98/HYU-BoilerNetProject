@@ -14,6 +14,8 @@ from tqdm import tqdm
 from misc import util
 import time
 
+counts = 0
+
 def get_leaves(node, tag_list=[], label=0):
     """Return all leaves (NavigableStrings) in a BS4 tree."""
     tag_list_new = tag_list + [node.name]
@@ -28,6 +30,9 @@ def get_leaves(node, tag_list=[], label=0):
                 result.append((c, tag_list_new, label))
         elif c.name not in util.TAGS_TO_IGNORE:
             result.extend(get_leaves(c, tag_list_new, label))
+    
+    
+        
     return result
 
 
@@ -67,13 +72,18 @@ def parse(filenames):
     result = {}
     tags = defaultdict(int)
     words = defaultdict(int)
-
+    global counts
+        
     for f in tqdm(filenames):
         try:
             with open(f, 'rb') as hfile:
                 doc = BeautifulSoup(hfile, features='html5lib')
             basename = os.path.basename(f)
             result[basename] = process(doc, tags, words)
+            if counts<10:
+                with open('get_leaves.txt','a',encoding='utf-8') as file:
+                    file.write(str(result[basename]) + '\n')
+                    counts+=1
         except:
             tqdm.write('error processing {}'.format(f))
     return result, tags, words
@@ -221,7 +231,8 @@ def main():
         dev_set, test_set = None, None
 
     save(args.save, words, tags, train_set, dev_set, test_set)
-
+    
+    
 
 if __name__ == '__main__':
     main()

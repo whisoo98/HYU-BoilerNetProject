@@ -65,11 +65,11 @@ class LeafClassifier(nn.Module):
     #     self.dense_size = dense_size
     #     self.model= self._get_model()
 
-    # # def forward(self, input):
-    # #     result = []
-    # #     for x in input:
-    # #         result.append(self.model(x))
-    # #     return torch.tensor(result)
+    # def forward(self, input):
+    #     result = []
+    #     for x in input:
+    #         result.append(self.model(x))
+    #     return torch.tensor(result)
     
     # def forward(self, input, attention_mask):
     #     result = []
@@ -86,26 +86,60 @@ class LeafClassifier(nn.Module):
     #         nn.Linear(self.dense_size, 1),
     #         nn.Sigmoid()
     #     )
-
-    #     return model
-    def __init__(self, num_layers, hidden_size, dropout, dense_size):
+    
+    def __init__(self, input_size, hidden_size, num_layers, dropout, dense_size):
         super(LeafClassifier, self).__init__()
-        self.num_layers = num_layers
-        self.hidden_size = hidden_size
-        self.dropout = dropout
-        self.dense_size = dense_size
-        self.model = self._get_model()
+        self.config = BertConfig.from_pretrained('bert-base-uncased')
+        self.config.hidden_size = hidden_size
+        self.config.num_hidden_layers = num_layers
+        self.bert = BertModel(config=self.config)
+        self.dropout = nn.Dropout(dropout)
+        self.classifier = nn.Linear(input_size, dense_size)
+        self.relu = nn.ReLU()
+        self.output_layer = nn.Linear(dense_size, 1)
+        self.sigmoid = nn.Sigmoid()
 
-    def forward(self, input, attention_mask):
-        result = []
-        for x, mask in zip(input, attention_mask):
-            result.append(self.model(x, mask))
-        return torch.cat(result, dim=0)
+    def forward(self, hidden_states, attention_mask):
+        outputs = self.bert(inputs_embeds=hidden_states, attention_mask=attention_mask)
+        pooled_output = outputs.pooler_output
+        pooled_output = self.dropout(pooled_output)
+        x = self.relu(self.classifier(pooled_output))
+        logits = self.output_layer(x)
+        return self.sigmoid(logits)
+    
+    # def __init__(self,input_size, num_layers, hidden_size, dropout, dense_size):
+    #     super(LeafClassifier, self).__init__()
+    #     self.input_size = input_size
+    #     self.num_layers = num_layers
+    #     self.hidden_size = hidden_size
+    #     self.dropout = dropout
+    #     self.dense_size = dense_size
+    #     # self.model = self._get_model(tokenizer)
+    #     self.bert_model = self._get_bert_model()
+    #     self.classifier = self._get_classifier()
 
-    def _get_model(self):
-        bert_config = BertConfig.from_pretrained('bert-base-multilingual-cased')
-        bert_model = BertModel(config=bert_config)
-        bert_model.resize_token_embeddings(len(tokenizer))  # 추가: tokenizer에 맞게 토큰 임베딩 크기 조정
+    # def forward(self, input, attention_mask):
+    #     result = []
+    #     for x, mask in zip(input, attention_mask):
+    #         # outputs = self.model(x, mask)
+    #         # pooled_output = outputs.pooler_output
+    #         self.model(x, mask)
+    #         result.append(self.model(x, mask))
+    #     return torch.cat(result, dim=0)
+    # def forward(self, input_ids, attention_mask):
+    #     outputs = self.bert_model(input_ids=input_ids, attention_mask=attention_mask)
+    #     pooled_output = outputs.pooler_output
+    #     result = self.classifier(pooled_output)
+    #     return result
+    
+    # def _get_bert_model(self):
+    #     bert_config = BertConfig.from_pretrained('bert-base-multilingual-cased')
+    #     bert_model = BertModel(config=bert_config)
+    #     bert_model.resize_token_embeddings(len(tokenizer))  # 추가: tokenizer에 맞게 토큰 임베딩 크기 조정
+        
+    #     return bert_model    
+
+    def _get_classifier(self):
         classifier = nn.Sequential(
             nn.Dropout(self.dropout),
             nn.Linear(self.hidden_size, self.dense_size),
@@ -115,34 +149,54 @@ class LeafClassifier(nn.Module):
             nn.Linear(self.dense_size, 1),
             nn.Sigmoid()
         )
-        model = nn.Sequential(
-            bert_model,
-            classifier
-        )
-        return model
+        return classifier
+    
+    # def _get_model(self,tokenizer):
+    #     bert_config = BertConfig.from_pretrained('bert-base-multilingual-cased')
+    #     bert_model = BertModel(config=bert_config)
+    #     bert_model.resize_token_embeddings(len(tokenizer))  # 추가: tokenizer에 맞게 토큰 임베딩 크기 조정
+    #     classifier = nn.Sequential(
+    #         nn.Dropout(self.dropout),
+    #         nn.Linear(self.hidden_size, self.dense_size),
+    #         nn.ReLU(),
+    #         nn.Linear(self.dense_size, self.dense_size),
+    #         nn.ReLU(),
+    #         nn.Linear(self.dense_size, 1),
+    #         nn.Sigmoid()
+    #     )
+    #     model = nn.Sequential(
+    #         bert_model,
+    #         classifier
+    #     )
+    #     return model
     
     def train1(self, train_loader, optimizer, loss_fn, epochs=20, device='cpu'):
         print(len(train_loader))
         for _ in range(epochs):
             self.train()
             train_loss = 0
-            
             for batch_idx, (data, label) in enumerate(train_loader):
+                print(data.size())
                 data = data.to(device)
                 optimizer.zero_grad()
-                print("[--------------------DATA-----------------------]")
-                print(data.dim())
-                print(data.shape)
-                print("[--------------------DATA-----------------------]")
+                
                 data = data.to(torch.float32)
+                print(data.size())
                 
                 label = label.to(torch.float32)
-                padding_token = 0
-                # attention_mask = np.array([[[1 if token != padding_token else 0 for token in data[i][j]] for j in range(len(data[i]))] for i in range(len(data))])
-                # attention_mask = torch.tensor(attention_mask)
-                attention_mask = torch.where(data != 0, torch.tensor(1), torch.tensor(0))
+
+                # train_data = torch.tensor(data[batch_idx])
+                train_data = torch.tensor(data)
+                attention_mask = torch.where(train_data != 0, torch.tensor(1), torch.tensor(0))
+                attention_mask = torch.tensor(attention_mask)
+                print("[--------------------DATA-----------------------]")
+                print("train_data dimension : ",train_data.dim(), "train_data shape : ", train_data.shape, "train_data size : ", train_data.size())
+                print("attention_mask dimension : ",attention_mask.dim(), "attention_mask shape : ", attention_mask.shape)
+                print("[--------------------DATA-----------------------]")
+                # TODO : data 가 2차원이어야함 -> torch.Size()했을 때 2개만 나와야한다.
+                # torch.Size([batch_size, sequence_length, embedding_dim])
                 # output = self.model.forward(input=data, attention_mask=attention_mask).squeeze()
-                output = self.forward(input=data, attention_mask=attention_mask).squeeze()
+                output = self.forward(train_data, attention_mask).squeeze()
                 print(output.shape)
                 print(label.shape)
                 loss = loss_fn(output, label)
@@ -165,7 +219,7 @@ class LeafClassifier(nn.Module):
             # attention_mask = np.array([[[1 if token != padding_token else 0 for token in data[i][j]] for j in range(len(data[i]))] for i in range(len(data))])
             # attention_mask = torch.tensor(attention_mask)
             attention_mask = torch.where(data != 0, torch.tensor(1), torch.tensor(0))
-            output = self.forward(input=data, attention_mask=attention_mask).squeeze()
+            output = self.forward(data, attention_mask).squeeze()
             # output = self.model.forward(input=data, attention_mask=attention_mask).squeeze()
             
             # output = self.model.forward(data, attention_mask).squeeze()

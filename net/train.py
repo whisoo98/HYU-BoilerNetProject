@@ -111,7 +111,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('DATA_DIR', help='Directory of files produced by the preprocessing script')
     ap.add_argument('-l', '--num_layers', type=int, default=2, help='The number of RNN layers')
-    ap.add_argument('-u', '--hidden_units', type=int, default=256,
+    ap.add_argument('-u', '--hidden_units', type=int, default=768,
                     help='The number of hidden LSTM units')
     ap.add_argument('-d', '--dropout', type=float, default=0.5, help='The dropout percentage')
     ap.add_argument('-s', '--dense_size', type=int, default=256, help='Size of the dense layer')
@@ -149,7 +149,7 @@ def main():
     print('using class weights {}'.format(class_weights))
 
     kwargs = {
-        # 'input_size': info['num_words'] + info['num_tags'],
+        'input_size': info['num_words'] + info['num_tags'],
         'hidden_size': args.hidden_units,
         'num_layers': args.num_layers,
         'dropout': args.dropout,
