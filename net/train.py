@@ -45,11 +45,11 @@ def pad_collate(batch):
     # pad_sequence는 텐서의 배치를 입력받아 동일한 길이로 패딩합니다.
     xx_pad = pad_sequence(xx, batch_first=True, padding_value=0)
     yy_pad = pad_sequence(yy, batch_first=True, padding_value=0)
+    zz_pad = pad_sequence(zz, batch_first=True, padding_value=0)
 
     return xx_pad, yy_pad, zz
 
 def get_dataset(npy_file, batch_size, repeat=True):
-    print(npy_file)
     dataset = CustomDataset(npy_file)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, collate_fn=pad_collate)
     # dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)

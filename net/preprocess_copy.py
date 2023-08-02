@@ -67,6 +67,7 @@ def process(doc, tags, words):
     bert_input_list = []
     for ret in get_leaves(doc.find_all('html')[0]):
         leaf, tag_list, is_content = ret
+        # make bert input using leaf node => <TAG> <LEAF> <TAG>
         bert_input = makeTagStringTag(leaf, tag_list)
         leaf_representation = get_leaf_representation(leaf, tag_list, is_content)
         
@@ -97,6 +98,7 @@ def parse(filenames):
             with open(f, 'rb') as hfile:
                 doc = BeautifulSoup(hfile, features='html5lib')
             basename = os.path.basename(f)
+            # Save bert input as same format of results
             result[basename], bert_input[basename] = process(doc, tags, words)
             
             # if counts<10:
@@ -158,6 +160,7 @@ def get_doc_inputs(docs, word_map, tag_map):
 def write_npy(filename, dataset, word_map, tag_map):
     """Write the dataset to a .pth file."""
     # with tf.io.TFRecordWriter(filename) as writer:
+    
     # dataset[0] : result[basename]
     # dataset[1] : bert_input[basename]
     
@@ -170,15 +173,8 @@ def write_npy(filename, dataset, word_map, tag_map):
         data[0]['doc_feature_list'].append(doc_feature_list)
         data[0]['doc_label_list'].append(doc_label_list)
         data[0]['bert_input'].append(dataset[1])
-        # data[0]['bert_input'].append(bert_input)
-        # f = {'doc_feature_list': doc_feature_list, 'doc_label_list': doc_label_list}
-        # feature_lists = tf.train.FeatureLists(feature_list=f)
-        # example = {'feature_lists': f}
-        # data.append(f)
-    # print(idx, "th length of bert_input:",len(doc_feature_list))s
     
     data = np.array(data)
-    # np.savez(file=filename,)
     np.save(file = filename, arr = data, allow_pickle=True)
 
 
@@ -195,11 +191,6 @@ def save(save_path, word_map, tag_map, train_set, dev_set=None, test_set=None):
     info = {}
     info['num_words'] = len(word_map)
     info['num_tags'] = len(tag_map)
-    
-    print("train_set[0] length : ", len(train_set[0]))
-    print("word_map length : ", len(word_map))
-    print("tag_map length : ", len(tag_map))
-    print("train_set[1] length : ", len(train_set[1]))
     
     train_file = os.path.join(save_path, 'train.npy')
     print('writing {}...'.format(train_file))
@@ -255,6 +246,10 @@ def main():
         print(train_set_file)
         print(dev_set_file)
         print(test_set_file)
+        
+        # save result & bert input in "~~"_set list
+        # [0] : result
+        # [1] : bert_input
         train_set = [[],[]]
         dev_set = [[],[]]
         test_set = [[],[]]
