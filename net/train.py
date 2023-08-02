@@ -20,22 +20,25 @@ from sklearn.utils import class_weight
 from leaf_classifier import LeafClassifier
 
 from pprint import pprint
+from time import sleep
 
 class CustomDataset(Dataset):
     def __init__(self, npy_file):
         data = np.load(npy_file, allow_pickle=True)
         self.features = data[0]['doc_feature_list']
         self.labels = data[0]['doc_label_list']
+        self.bert_input = data[0]['bert_input']
         print(len(self.features[0]))
         print(len(self.labels[0]))
+        print(len(self.bert_input[0]))
     def __len__(self):
         return len(self.features)
 
     def __getitem__(self, idx):
-        return self.features[idx], self.labels[idx]
+        return self.features[idx], self.labels[idx], self.bert_input[idx]
 
 def pad_collate(batch):
-    (xx, yy) = zip(*batch)
+    (xx, yy, zz) = zip(*batch)
     # 텐서 변환을 하지 않고 pad_sequence에 리스트를 전달합니다.
     xx = [torch.tensor(np.array(x)) for x in xx]
     yy = [torch.tensor(np.array(y)) for y in yy]
@@ -43,12 +46,22 @@ def pad_collate(batch):
     xx_pad = pad_sequence(xx, batch_first=True, padding_value=0)
     yy_pad = pad_sequence(yy, batch_first=True, padding_value=0)
 
-    return xx_pad, yy_pad
+    return xx_pad, yy_pad, zz
 
 def get_dataset(npy_file, batch_size, repeat=True):
     print(npy_file)
     dataset = CustomDataset(npy_file)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, collate_fn=pad_collate)
+    # dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+
+    # DataLoader의 내용 출력
+    for batch in dataloader:
+        # input_ids, attention_mask= batch
+        input_ids, attention_mask, labels = batch
+        print("Input IDs:", input_ids)
+        print("Attention Masks:", attention_mask)
+        print("Labels:", labels)
+        
     return dataloader
 
 # def get_dataset(dataset_file, batch_size, repeat=True):
@@ -130,7 +143,8 @@ def main():
     # train_set_file = os.path.join(args.DATA_DIR, 'train.tfrecords')
     train_set_file = os.path.join(args.DATA_DIR, 'train.npy')
     train_dataset = get_dataset(train_set_file, args.batch_size)
-
+    print(train_dataset)
+    
     # dev_set_file = os.path.join(args.DATA_DIR, 'dev.tfrecords')
     dev_set_file = os.path.join(args.DATA_DIR, 'dev.npy')
     if os.path.isfile(dev_set_file):

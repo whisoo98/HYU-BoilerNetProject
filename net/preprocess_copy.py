@@ -87,6 +87,7 @@ def parse(filenames):
     Return the parsed documents and a set of all words and HTML tags.
     """
     result = {}
+    bert_input = {}
     tags = defaultdict(int)
     words = defaultdict(int)
     global counts
@@ -96,7 +97,7 @@ def parse(filenames):
             with open(f, 'rb') as hfile:
                 doc = BeautifulSoup(hfile, features='html5lib')
             basename = os.path.basename(f)
-            result[basename] = process(doc, tags, words)
+            result[basename], bert_input[basename] = process(doc, tags, words)
             
             # if counts<10:
             #     with open('get_leaves.txt','a',encoding='utf-8') as file:
@@ -104,17 +105,8 @@ def parse(filenames):
             #         counts+=1
         except:
             tqdm.write('error processing {}'.format(f))
-    if counts<10:
-        with open('get_leaves_result.txt','a',encoding='utf-8') as file:
-            file.write(str(result) + '\n')
-            counts+=1
-        with open('get_leaves_tags.txt','a',encoding='utf-8') as file:
-            file.write(str(tags) + '\n')
-            counts+=1
-        with open('get_leaves_words.txt','a',encoding='utf-8') as file:
-            file.write(str(words) + '\n')
-            counts+=1
-    return result, tags, words
+   
+    return result, tags, words, bert_input
 
 
 def get_feature_vector(words_dict, tags_dict, word_map, tag_map):
@@ -166,18 +158,25 @@ def get_doc_inputs(docs, word_map, tag_map):
 def write_npy(filename, dataset, word_map, tag_map):
     """Write the dataset to a .pth file."""
     # with tf.io.TFRecordWriter(filename) as writer:
-    data = [{'doc_feature_list': [], 'doc_label_list': []}]
-    for idx, (doc_feature_list, doc_label_list) in enumerate(get_doc_inputs(dataset, word_map, tag_map)):
+    # dataset[0] : result[basename]
+    # dataset[1] : bert_input[basename]
+    
+    data = [{'doc_feature_list': [], 'doc_label_list': [], 'bert_input' : []}]
+    for idx, (doc_feature_list, doc_label_list) in enumerate(get_doc_inputs(dataset[0], word_map, tag_map)):
         print(idx, "th length of feature list:",len(doc_feature_list))
         print(idx, "th length of label list:",len(doc_label_list))
         print(idx, "th feature list:",len(doc_feature_list[0]))
         print(idx, "th label list:",doc_label_list[0])
         data[0]['doc_feature_list'].append(doc_feature_list)
         data[0]['doc_label_list'].append(doc_label_list)
+        data[0]['bert_input'].append(dataset[1])
+        # data[0]['bert_input'].append(bert_input)
         # f = {'doc_feature_list': doc_feature_list, 'doc_label_list': doc_label_list}
         # feature_lists = tf.train.FeatureLists(feature_list=f)
         # example = {'feature_lists': f}
         # data.append(f)
+    # print(idx, "th length of bert_input:",len(doc_feature_list))s
+    
     data = np.array(data)
     # np.savez(file=filename,)
     np.save(file = filename, arr = data, allow_pickle=True)
@@ -186,9 +185,6 @@ def write_npy(filename, dataset, word_map, tag_map):
 def save(save_path, word_map, tag_map, train_set, dev_set=None, test_set=None):
     """Save the data."""
     os.makedirs(save_path, exist_ok=True)
-    train_set, train_set_bert_input = train_set[:-1], train_set[-1]
-    dev_set, dev_set_bert_input = dev_set[:-1], dev_set[-1]
-    test_set, test_set_bert_input = test_set[:-1], test_set[-1]
     
     with open(os.path.join(save_path, 'words.json'), 'w', encoding='utf-8') as fp:
         json.dump(word_map, fp)
@@ -199,7 +195,12 @@ def save(save_path, word_map, tag_map, train_set, dev_set=None, test_set=None):
     info = {}
     info['num_words'] = len(word_map)
     info['num_tags'] = len(tag_map)
-
+    
+    print("train_set[0] length : ", len(train_set[0]))
+    print("word_map length : ", len(word_map))
+    print("tag_map length : ", len(tag_map))
+    print("train_set[1] length : ", len(train_set[1]))
+    
     train_file = os.path.join(save_path, 'train.npy')
     print('writing {}...'.format(train_file))
     write_npy(train_file, train_set, word_map, tag_map)
@@ -243,7 +244,7 @@ def main():
     filenames = []
     for d in args.DIRS:
         filenames.extend(util.get_filenames(d))
-    data, tags, words = parse(filenames)
+    data, tags, words, bert_input = parse(filenames)
     # print(data)
     tags = get_vocabulary(tags, args.num_tags)
     words = get_vocabulary(words, args.num_words)
@@ -254,9 +255,17 @@ def main():
         print(train_set_file)
         print(dev_set_file)
         print(test_set_file)
-        train_set = [data[basename] for basename in read_file(train_set_file)]
-        dev_set = [data[basename] for basename in read_file(dev_set_file)]
-        test_set = [data[basename] for basename in read_file(test_set_file)]
+        train_set = [[],[]]
+        dev_set = [[],[]]
+        test_set = [[],[]]
+        
+        train_set[0] = [data[basename] for basename in read_file(train_set_file)]
+        dev_set[0] = [data[basename] for basename in read_file(dev_set_file)]
+        test_set[0] = [data[basename] for basename in read_file(test_set_file)]
+        
+        train_set[1] = [bert_input[basename] for basename in read_file(train_set_file)]
+        dev_set[1] = [bert_input[basename] for basename in read_file(dev_set_file)]
+        test_set[1] = [bert_input[basename] for basename in read_file(test_set_file)]
     else:
         train_set = list(data.values())
         dev_set, test_set = None, None
