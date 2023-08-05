@@ -31,6 +31,7 @@ class CustomDataset(Dataset):
         print(len(self.features[0]))
         print(len(self.labels[0]))
         print(len(self.bert_input[0]))
+        
     def __len__(self):
         return len(self.features)
 
@@ -186,9 +187,9 @@ def main():
     #           args.interval)
     optimizer = torch.optim.Adam(clf.parameters(), lr=0.001)
     clf.train1(train_loader=train_dataset, optimizer=optimizer, loss_fn=nn.BCELoss(), epochs=args.epochs, device='cpu')
-    acc = clf.evaluate(test_dataset, 'cpu')
-    print("accuracy 0 :", acc[0])
-    print("accuracy 1 :", acc[1])
+    # acc = clf.evaluate(test_dataset, 'cpu')
+    # print("accuracy 0 :", acc[0])
+    # print("accuracy 1 :", acc[1])
 
 if __name__ == '__main__':
     main()
