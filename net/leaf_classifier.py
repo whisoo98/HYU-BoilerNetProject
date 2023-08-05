@@ -171,17 +171,15 @@ class LeafClassifier(nn.Module):
     #     return model
     
     def train1(self, train_loader, optimizer, loss_fn, epochs=20, device='cpu'):
-        print(len(train_loader))
+        print("train loader length : ",len(train_loader))
         for _ in range(epochs):
             self.train()
             train_loss = 0
-            for batch_idx, (data, label) in enumerate(train_loader):
-                print(data.size())
+            for batch_idx, (data, label, bert_input) in enumerate(train_loader):
                 data = data.to(device)
                 optimizer.zero_grad()
                 
                 data = data.to(torch.float32)
-                print(data.size())
                 
                 label = label.to(torch.float32)
 
@@ -193,12 +191,10 @@ class LeafClassifier(nn.Module):
                 print("train_data dimension : ",train_data.dim(), "train_data shape : ", train_data.shape, "train_data size : ", train_data.size())
                 print("attention_mask dimension : ",attention_mask.dim(), "attention_mask shape : ", attention_mask.shape)
                 print("[--------------------DATA-----------------------]")
-                # TODO : data 가 2차원이어야함 -> torch.Size()했을 때 2개만 나와야한다.
-                # torch.Size([batch_size, sequence_length, embedding_dim])
-                # output = self.model.forward(input=data, attention_mask=attention_mask).squeeze()
+                
                 output = self.forward(train_data, attention_mask).squeeze()
-                print(output.shape)
-                print(label.shape)
+                # print(output.shape)
+                # print(label.shape)
                 loss = loss_fn(output, label)
                 loss.backward()
                 optimizer.step()

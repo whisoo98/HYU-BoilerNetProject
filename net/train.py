@@ -45,7 +45,7 @@ def pad_collate(batch):
     # pad_sequence는 텐서의 배치를 입력받아 동일한 길이로 패딩합니다.
     xx_pad = pad_sequence(xx, batch_first=True, padding_value=0)
     yy_pad = pad_sequence(yy, batch_first=True, padding_value=0)
-    zz_pad = pad_sequence(zz, batch_first=True, padding_value=0)
+    # zz_pad = pad_sequence(zz, batch_first=True, padding_value=0)
 
     return xx_pad, yy_pad, zz
 
@@ -53,15 +53,11 @@ def get_dataset(npy_file, batch_size, repeat=True):
     dataset = CustomDataset(npy_file)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, collate_fn=pad_collate)
     # dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+    # DataLoader의 내용
+    # 1. feature
+    # 2. lable
+    # 3. bert_input
 
-    # DataLoader의 내용 출력
-    for batch in dataloader:
-        # input_ids, attention_mask= batch
-        input_ids, attention_mask, labels = batch
-        print("Input IDs:", input_ids)
-        print("Attention Masks:", attention_mask)
-        print("Labels:", labels)
-        
     return dataloader
 
 # def get_dataset(dataset_file, batch_size, repeat=True):
@@ -115,8 +111,12 @@ def get_dataset(npy_file, batch_size, repeat=True):
 
 def get_class_weights(train_set_file):
     y_train = []
-    for _, y in get_dataset(train_set_file, 1, False):
-        y_train.extend(y.numpy().flatten())
+    dataset = get_dataset(train_set_file, 1, False)
+    # dataset[0] : feature
+    # dataset[1] : lable 
+    # dataset[2] : <tag> <str> <tag
+    for batch in dataset:
+        y_train.extend(batch[1].numpy().flatten())
     return class_weight.compute_class_weight(class_weight='balanced', classes=[0, 1], y=y_train)
 
 
@@ -143,7 +143,6 @@ def main():
     # train_set_file = os.path.join(args.DATA_DIR, 'train.tfrecords')
     train_set_file = os.path.join(args.DATA_DIR, 'train.npy')
     train_dataset = get_dataset(train_set_file, args.batch_size)
-    print(train_dataset)
     
     # dev_set_file = os.path.join(args.DATA_DIR, 'dev.tfrecords')
     dev_set_file = os.path.join(args.DATA_DIR, 'dev.npy')
