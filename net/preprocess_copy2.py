@@ -1,4 +1,3 @@
-# preprocess_copy.py
 import os
 import argparse
 import pickle
@@ -11,22 +10,18 @@ import torch
 import torch.nn as nn
 from bs4 import BeautifulSoup, NavigableString
 from tqdm import tqdm
-from torch.nn.utils.rnn import pad_sequence
 
 from misc import util
 import time
-from transformers import BertModel, BertConfig, BertTokenizer, BertForSequenceClassification
-from keras.preprocessing.sequence import pad_sequences
+
 counts = 0
-tokenizer = BertTokenizer.from_pretrained('bert-base-multilingual-cased', do_lower_case=False, timeout=1000000)
     
-def process(doc):   
+def process(doc, tags, words):
     """
     Process "doc", updating the tag and word counts.
     Return the document representation, the HTML tags and the words.
     """
-    html_list = ["[CLS]"+html.strip()+"[SEP]" for html in (str(doc.find_all('html')[0])).split('\n')]
-    
+    html_list = [html.strip() for html in (str(doc.find_all('html')[0])).split('\n')]
     label_list = []
     for idx, html in enumerate(html_list):
         if('__boilernet_label="0"' in html):
@@ -37,22 +32,8 @@ def process(doc):
             html_list[idx] = html.replace(' __boilernet_label="1"','')
         else:
             label_list.append(0)
-    # 토큰화
-    tokenized = [tokenizer.tokenize(html) for html in html_list]
-    # print("tokenized: ", tokenized)
-    tokenized_ids = [torch.tensor(tokenizer.convert_tokens_to_ids(html)) for html in tokenized]
     
-    # 패딩
-    tokenized_ids = pad_sequences(tokenized_ids, maxlen=128, dtype=type(torch.tensor), truncating='post', padding='post')
-    # tokenized_ids = [torch.tensor(token) for token in tokenized_ids]
-    # tokenized_ids = pad_sequence(tokenized_ids, batch_first=False, padding_value=0)
-    
-    # 마스킹
-    masks = []
-    for id in tokenized_ids:
-        mask = [torch.tensor(float(i>0)) for i in id] 
-        masks.append(mask)
-    return tokenized_ids, label_list, masks
+    return html_list, label_list
 
 
 def parse(filenames):
@@ -62,7 +43,8 @@ def parse(filenames):
     """
     html_result = {}
     label_result = {}
-    masking_result = {}
+    tags = defaultdict(int)
+    words = defaultdict(int)
     global counts
         
     for f in tqdm(filenames):
@@ -71,13 +53,12 @@ def parse(filenames):
                 doc = BeautifulSoup(hfile, features='html5lib')
             basename = os.path.basename(f)
             # Save bert input as same format of results
-            html_result[basename], label_result[basename], masking_result[basename] = process(doc)
+            html_result[basename], label_result[basename] = process(doc, tags, words)
         except Exception as e:
             tqdm.write('error processing {}'.format(f))
-            print(e)
             break
             
-    return html_result, label_result, masking_result
+    return html_result, label_result
 
 def write_npy(filename, dataset):
     """Write the dataset to a .pth file."""
@@ -115,10 +96,6 @@ def save(save_path, train_set, dev_set=None, test_set=None):
         write_npy(test_file, test_set)
         info['num_test_examples'] = len(test_set)
 
-    info_file = os.path.join(save_path, 'info.pkl')
-    with open(info_file, 'wb') as fp:
-        pickle.dump(info, fp)
-
 
 def read_file(f_name):
     with open(f_name, encoding='utf-8') as fp:
@@ -133,8 +110,6 @@ def main():
     ap.add_argument('-w', '--num_words', type=int, help='Only use the top-k words')
     ap.add_argument('-t', '--num_tags', type=int, help='Only use the top-l HTML tags')
     ap.add_argument('--save', default='result', help='Where to save the results')
-    ap.add_argument('--working_dir', default='train', help='Where to save checkpoints and logs')
-    
     args = ap.parse_args()
 
     # files required for tokenization
@@ -143,7 +118,7 @@ def main():
     filenames = []
     for d in args.DIRS:
         filenames.extend(util.get_filenames(d))
-    html_result, label_result, masking_result = parse(filenames)
+    html_result, label_result = parse(filenames)
     
     if args.split_dir:
         train_set_file = os.path.join(args.split_dir, 'train_set.txt')
@@ -156,9 +131,9 @@ def main():
         # save result & bert input in "~~"_set list
         # [0] : result
         # [1] : bert_input
-        train_set = [[],[],[]]
-        dev_set = [[],[],[]]
-        test_set = [[],[],[]]
+        train_set = [[],[]]
+        dev_set = [[],[]]
+        test_set = [[],[]]
         
         train_set[0] = [html_result[basename] for basename in read_file(train_set_file)]
         dev_set[0] = [html_result[basename] for basename in read_file(dev_set_file)]
@@ -167,67 +142,13 @@ def main():
         train_set[1] = [label_result[basename] for basename in read_file(train_set_file)]
         dev_set[1] = [label_result[basename] for basename in read_file(dev_set_file)]
         test_set[1] = [label_result[basename] for basename in read_file(test_set_file)]
-        
-        train_set[2] = [masking_result[basename] for basename in read_file(train_set_file)]
-        dev_set[2] = [masking_result[basename] for basename in read_file(dev_set_file)]
-        test_set[2] = [masking_result[basename] for basename in read_file(test_set_file)]
     else:
         train_set = list(html_result.values(), label_result.values() )
         dev_set, test_set = None, None
 
     save(args.save, train_set, dev_set, test_set)
     
-def preprocess(args):
-    # python net/preprocess.py googletrends-2017/prepared_html/ -s googletrends-2017/50-30-100-split/ -w 1000 -t 50 --save googletrends_data
-    # ap = argparse.ArgumentParser()
     
-    
-    # args = ap.parse_args()
-
-    nltk.download('punkt')
-
-    filenames = []
-    for d in args.dirs:
-        filenames.extend(util.get_filenames(d))
-    html_result, label_result, masking_result = parse(filenames)
-    print(html_result)
-    # print("FILENAME : ", filenames)
-    # print("FILENAME : ", args.dirs)
-    if args.split_dir:
-        # print("SPLITDIR!!!!!!!!!!:",args.split_dir)
-        train_set_file = os.path.join(args.split_dir, 'train_set.txt')
-        dev_set_file = os.path.join(args.split_dir, 'dev_set.txt')
-        test_set_file = os.path.join(args.split_dir, 'test_set.txt')
-        print(train_set_file)
-        print(dev_set_file)
-        print(test_set_file)
-        
-        # save result & bert input in "~~"_set list
-        # [0] : result
-        # [1] : bert_input
-        train_set = [[],[],[]]
-        dev_set = [[],[],[]]
-        test_set = [[],[],[]]
-        for basename in read_file(train_set_file):
-            print(basename)
-        # print(html_result)
-            
-        train_set[0] = [html_result[basename] for basename in read_file(train_set_file)]
-        dev_set[0] = [html_result[basename] for basename in read_file(dev_set_file)]
-        test_set[0] = [html_result[basename] for basename in read_file(test_set_file)]
-        
-        train_set[1] = [label_result[basename] for basename in read_file(train_set_file)]
-        dev_set[1] = [label_result[basename] for basename in read_file(dev_set_file)]
-        test_set[1] = [label_result[basename] for basename in read_file(test_set_file)]
-        
-        train_set[2] = [masking_result[basename] for basename in read_file(train_set_file)]
-        dev_set[2] = [masking_result[basename] for basename in read_file(dev_set_file)]
-        test_set[2] = [masking_result[basename] for basename in read_file(test_set_file)]
-    else:
-        train_set = list(html_result.values(), label_result.values() )
-        dev_set, test_set = None, None
-
-    return train_set, dev_set, test_set
 
 if __name__ == '__main__':
     main()
