@@ -1,0 +1,22 @@
+Preprocessing
+전체언어
+python net/preprocess.py googletrends-2017/prepared_html/ -s googletrends-2017/50-30-100-split/ -w 1000 -t 50 --save googletrends_data -l All
+
+영어
+python net/preprocess.py googletrends-2017/prepared_html/ -s googletrends-2017/50-30-100-split/ -w 1000 -t 50 --save googletrends_data -l English
+
+한국어
+python net/preprocess.py googletrends-2017/prepared_html/ -s googletrends-2017/50-30-100-split/ -w 1000 -t 50 --save googletrends_data -l Korean
+
+일본어
+python net/preprocess.py googletrends-2017/prepared_html/ -s googletrends-2017/50-30-100-split/ -w 1000 -t 50 --save googletrends_data -l Japanese
+
+중국어
+python net/preprocess.py googletrends-2017/prepared_html/ -s googletrends-2017/50-30-100-split/ -w 1000 -t 50 --save googletrends_data -l Chinese
+
+Training
+python net/train.py googletrends_data --working_dir googletrends_train
+
+Training Copy
+
+python net/train_copy.py googletrends_data --dirs googletrends-2017/prepared_html/ -s googletrends-2017/50-30-100-split/ --working_dir googletrends_train --save googletrends_data

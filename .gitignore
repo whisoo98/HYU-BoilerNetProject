@@ -117,3 +117,13 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+googletrends_train/
+googletrends_data/
+googletrends-2017/
+boilernet-master.zip
+일본&중국_dataset.zip
+output_k_html.zip
+china_dataset/
+korea_dataset/
+japan_dataset/
