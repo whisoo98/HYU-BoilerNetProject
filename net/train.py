@@ -66,23 +66,25 @@ def main():
     ap.add_argument('--interval', type=int, default=5,
                     help='Calculate metrics and save the model after this many epochs')
     ap.add_argument('--working_dir', default='train', help='Where to save checkpoints and logs')
+    ap.add_argument('-lan', '--language', help='A list of directories containing the HTML files')
     args = ap.parse_args()
-
-    info_file = os.path.join(args.DATA_DIR, 'info.pkl')
+    language = args.language
+    
+    info_file = os.path.join(args.DATA_DIR, '{0}_info.pkl'.format(language))
     with open(info_file, 'rb') as fp:
         info = pickle.load(fp)
         train_steps = math.ceil(info['num_train_examples'] / args.batch_size)
 
-    train_set_file = os.path.join(args.DATA_DIR, 'train.tfrecords')
+    train_set_file = os.path.join(args.DATA_DIR, '{0}_train.tfrecords'.format(language))
     train_dataset = get_dataset(train_set_file, args.batch_size)
 
-    dev_set_file = os.path.join(args.DATA_DIR, 'dev.tfrecords')
+    dev_set_file = os.path.join(args.DATA_DIR, '{0}_dev.tfrecords'.format(language))
     if os.path.isfile(dev_set_file):
         dev_dataset = get_dataset(dev_set_file, 1, repeat=False)
     else:
         dev_dataset = None
     
-    test_set_file = os.path.join(args.DATA_DIR, 'test.tfrecords')
+    test_set_file = os.path.join(args.DATA_DIR, '{0}_test.tfrecords'.format(language))
     if os.path.isfile(test_set_file):
         test_dataset = get_dataset(test_set_file, 1, repeat=False)
     else:
@@ -98,11 +100,11 @@ def main():
               'dense_size': args.dense_size}
     clf = LeafClassifier(**kwargs)
 
-    ckpt_dir = os.path.join(args.working_dir, 'ckpt')
-    log_file = os.path.join(args.working_dir, 'train.csv')
+    ckpt_dir = os.path.join(args.working_dir, '{0}_ckpt'.format(language))
+    log_file = os.path.join(args.working_dir, '{0}_train.csv'.format(language))
     os.makedirs(ckpt_dir, exist_ok=True)
 
-    params_file = os.path.join(args.working_dir, 'params.csv')
+    params_file = os.path.join(args.working_dir, '{0}_params.csv'.format(language))
     print('writing {}...'.format(params_file))
     with open(params_file, 'w') as fp:
         writer = csv.writer(fp)

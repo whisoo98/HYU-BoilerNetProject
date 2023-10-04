@@ -210,15 +210,15 @@ def write_tfrecords(filename, dataset, word_map, tag_map):
             writer.write(example.SerializeToString())
 
 
-def save(save_path, word_map, tag_map, train_set, dev_set=None, test_set=None):
+def save(save_path, word_map, tag_map, train_set, dev_set=None, test_set=None, language = 'All'):
     """Save the data."""
     os.makedirs(save_path, exist_ok=True)
 
-    with open(os.path.join(save_path, 'words.json'), 'w', encoding='utf-8') as fp:
+    with open(os.path.join(save_path, '{0}_words.json'.format(language)), 'w', encoding='utf-8') as fp:
         json.dump(word_map, fp)
         # json.dump(word_map, fp, ensure_ascii=False)
 
-    with open(os.path.join(save_path, 'tags.json'), 'w', encoding='utf-8') as fp:
+    with open(os.path.join(save_path, '{0}_tags.json'.format(language)), 'w', encoding='utf-8') as fp:
         json.dump(tag_map, fp)
         # json.dump(word_map, fp, ensure_ascii=False)
 
@@ -226,24 +226,24 @@ def save(save_path, word_map, tag_map, train_set, dev_set=None, test_set=None):
     info['num_words'] = len(word_map)
     info['num_tags'] = len(tag_map)
 
-    train_file = os.path.join(save_path, 'train.tfrecords')
+    train_file = os.path.join(save_path, '{0}_train.tfrecords'.format(language))
     print('writing {}...'.format(train_file))
     write_tfrecords(train_file, train_set, word_map, tag_map)
     info['num_train_examples'] = len(train_set)
 
     if dev_set is not None:
-        dev_file = os.path.join(save_path, 'dev.tfrecords')
+        dev_file = os.path.join(save_path, '{0}_dev.tfrecords'.format(language))
         print('writing {}...'.format(dev_file))
         write_tfrecords(dev_file, dev_set, word_map, tag_map)
         info['num_dev_examples'] = len(dev_set)
 
     if test_set is not None:
-        test_file = os.path.join(save_path, 'test.tfrecords')
+        test_file = os.path.join(save_path, '{0}_test.tfrecords'.format(language))
         print('writing {}...'.format(test_file))
         write_tfrecords(test_file, test_set, word_map, tag_map)
         info['num_test_examples'] = len(test_set)
 
-    info_file = os.path.join(save_path, 'info.pkl')
+    info_file = os.path.join(save_path, '{0}_info.pkl'.format(language))
     with open(info_file, 'wb') as fp:
         pickle.dump(info, fp)
 
@@ -293,7 +293,7 @@ def main():
         train_set = data.values()
         dev_set, test_set = None, None
 
-    save(args.save, words, tags, train_set, dev_set, test_set)
+    save(args.save, words, tags, train_set, dev_set, test_set, args.language)
 
 
 if __name__ == '__main__':
