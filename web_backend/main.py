@@ -24,6 +24,9 @@ from tqdm import tqdm
 
 from misc import util
 import requests
+import threading
+import time
+sem = threading.Semaphore()
 #=========preprocess line============
 
 def get_leaves(node, tag_list=[], label=0):
@@ -74,7 +77,15 @@ def process(doc, tags, words, tokenize=None):
         for tag, count in tags_dict.items():
             tags[tag] += count
     return result
-
+def process_doc(doc, tags, words):
+    """
+    Process "doc", updating the tag and word counts.
+    Return the document representation, the HTML tags and the words.
+    """
+    result = []
+    for leaf, tag_list, is_content in get_leaves(doc.find_all('html')[0]):
+        result.append(leaf)
+    return result
 
 def parse(filenames, language=None):
     """
@@ -99,7 +110,24 @@ def parse(filenames, language=None):
             tqdm.write('error processing {}'.format(f))
 
     return result, tags, words
+def parse_doc(filenames):
+    """
+    Read and parse all HTML files.
+    Return the parsed documents and a set of all words and HTML tags.
+    """
+    result = {}
+    tags = defaultdict(int)
+    words = defaultdict(int)
 
+    for f in tqdm(filenames):
+        try:
+            with open(f, 'rb') as hfile:
+                doc = BeautifulSoup(hfile, features='html5lib')
+            basename = os.path.basename(f)
+            result[basename] = process_doc(doc, tags, words)
+        except:
+            tqdm.write('error processing {}'.format(f))
+    return result, tags, words
 
 
 def get_feature_vector(words_dict, tags_dict, word_map, tag_map):
@@ -203,7 +231,7 @@ def predict():
     DATA_DIR = './process1'
     # 文章をノードごとに分割
     file_path = './process1'
-    doc_data, _, _ = parse(util.get_filenames(file_path))
+    doc_data, _, _ = parse_doc(util.get_filenames(file_path))
 
     info_file = os.path.join(DATA_DIR, 'info.pkl')
     with open(info_file, 'rb') as fp:
@@ -223,6 +251,7 @@ def predict():
     clf = LeafClassifier(**kwargs)
 
     checkpoint_path = "model.{:03d}.h5".format(49)
+    checkpoint_path = os.path.join("./process", checkpoint_path)
     clf.model = load_model(checkpoint_path)
 
     _, y_pred = clf.eval(predict_dataset, train_steps, desc="")
@@ -253,8 +282,8 @@ def predict():
         with open(os.path.join(dir_path, raw_filenames[i].replace("/", "_").replace(".", "_") + "delete.txt"),
                   'w') as file:
             file.write(delete_text)
-        print(content_text)
-        print(delete_text)
+        #print(content_text)
+        #print(delete_text)
         return content_text
 
 #==========flask line==========
@@ -271,13 +300,14 @@ def requestURL(url="https://n.news.naver.com/article/366/0000926317?cds=news_med
     #print(temp)
     #print(temp.text)
     textLine = temp.text
-
     return temp.text
 
 @app.route('/2', methods=['GET'])
 def sampleHtml():
     #return "Welcome to Flask"
     return render_template("index.html")
+
+
 @app.route('/받는url', methods=['POST'])
 def getHtml():
     url = request.get_data().decode('utf-8')
@@ -286,15 +316,19 @@ def getHtml():
     dir_path = './process1'
     os.makedirs(dir_path, exist_ok=True)  # 디렉토리가 없으면 생성
     path = os.path.join(dir_path, 'temp.html')
+    sem.acquire()
     open(path, 'wb').write(tempHTML.content)
     try:
         #print(tempHTML.content)
         preprocess(path)
         res =  predict()
+        sem.release()
         return res
     except Exception as e:
         print("eval error:", e)
+        sem.release()
         return "ERROR!"
 
 if __name__ == '__main__':
+    sem = threading.Semaphore()
     app.run(host='0.0.0.0', port=9999)
