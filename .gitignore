@@ -121,4 +121,12 @@ venv.bak/
 googletrends_train/
 googletrends_data/
 googletrends-2017/
+trained-data/
+all_dataset/
+japan_dataset/
+korea_dataset/
+china_dataset/
 boilernet-master.zip
+googletrends-2017.zip
+china_dataset.zip
+korea_dataset.zip

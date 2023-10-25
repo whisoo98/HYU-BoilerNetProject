@@ -1,7 +1,36 @@
 Preprocessing
-python3 net/preprocess_copy.py googletrends-2017/prepared_html/ -s googletrends-2017/50-30-100-split/ -w 1000 -t 50 --save googletrends_data
+전체언어
+python net/preprocess.py all_dataset/ -s all_dataset/50-30-100-split/ -w 1000 -t 50 --save preprocessed-data -l All
+
+영어
+python net/preprocess.py googletrends-2017/prepared_html/ -s googletrends-2017/50-30-100-split/ -w 1000 -t 50 --save preprocessed-data -l English
+
+한국어
+python net/preprocess.py korea_dataset/ -s korea_dataset/50-30-100-split/ -w 1000 -t 50 --save preprocessed-data -l Korean
+
+일본어
+python net/preprocess.py japan_dataset/ -s japan_dataset/50-30-100-split/ -w 1000 -t 50 --save preprocessed-data -l Japanese
+
+중국어
+python net/preprocess.py china_dataset/ -s china_dataset/50-30-100-split/ -w 1000 -t 50 --save preprocessed-data -l Chinese
 
 Training
-python3 net/train.py googletrends_data --working_dir googletrends_train
+전체언어
+python net/train.py preprocessed-data --working_dir trained-data -lan All -l 2 -u 256 -d 0.5 -s 256 -e 50 -b 16 --interval 1
 
-python3 net/train_copy.py googletrends_data --dirs googletrends-2017/prepared_html/ -s googletrends-2017/50-30-100-split/ --working_dir googletrends_train --save googletrends_data
+영어
+python net/train.py preprocessed-data --working_dir trained-data -lan English -l 2 -u 256 -d 0.5 -s 256 -e 50 -b 16 --interval 1
+
+한국어
+python net/train.py preprocessed-data --working_dir trained-data -lan Korean -l 2 -u 256 -d 0.5 -s 256 -e 50 -b 16 --interval 1
+
+일본어
+python net/train.py preprocessed-data --working_dir trained-data -lan Japanese -l 2 -u 256 -d 0.5 -s 256 -e 50 -b 16 --interval 1
+
+중국어
+python net/train.py preprocessed-data --working_dir trained-data -lan Chinese -l 2 -u 256 -d 0.5 -s 256 -e 50 -b 16 --interval 1
+
+
+Training Copy
+
+python net/train_copy.py googletrends_data --dirs googletrends-2017/prepared_html/ -s googletrends-2017/50-30-100-split/ --working_dir googletrends_train --save googletrends_data
