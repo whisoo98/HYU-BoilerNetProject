@@ -126,7 +126,12 @@ all_dataset/
 japan_dataset/
 korea_dataset/
 china_dataset/
+preprocessed-data/
 boilernet-master.zip
 googletrends-2017.zip
 china_dataset.zip
 korea_dataset.zip
+Dataset.zip
+preprocessed-data.zip
+trained-data.zip
+trained-csv.zip

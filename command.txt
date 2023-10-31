@@ -16,19 +16,19 @@ python net/preprocess.py china_dataset/ -s china_dataset/50-30-100-split/ -w 100
 
 Training
 전체언어
-python net/train.py preprocessed-data --working_dir trained-data -lan All -l 2 -u 256 -d 0.5 -s 256 -e 50 -b 16 --interval 1
+python net/train.py preprocessed-data --working_dir trained-data -lan All -l 2 -u 256 -d 0.5 -s 256 -e 50 -b 16 --interval 5
 
 영어
-python net/train.py preprocessed-data --working_dir trained-data -lan English -l 2 -u 256 -d 0.5 -s 256 -e 50 -b 16 --interval 1
+python net/train.py preprocessed-data --working_dir trained-data -lan English -l 2 -u 256 -d 0.5 -s 256 -e 50 -b 16 --interval 5
 
 한국어
-python net/train.py preprocessed-data --working_dir trained-data -lan Korean -l 2 -u 256 -d 0.5 -s 256 -e 50 -b 16 --interval 1
+python net/train.py preprocessed-data --working_dir trained-data -lan Korean -l 2 -u 256 -d 0.5 -s 256 -e 50 -b 16 --interval 5
 
 일본어
-python net/train.py preprocessed-data --working_dir trained-data -lan Japanese -l 2 -u 256 -d 0.5 -s 256 -e 50 -b 16 --interval 1
+python net/train.py preprocessed-data --working_dir trained-data -lan Japanese -l 2 -u 256 -d 0.5 -s 256 -e 50 -b 16 --interval 5
 
 중국어
-python net/train.py preprocessed-data --working_dir trained-data -lan Chinese -l 2 -u 256 -d 0.5 -s 256 -e 50 -b 16 --interval 1
+python net/train.py preprocessed-data --working_dir trained-data -lan Chinese -l 2 -u 256 -d 0.5 -s 256 -e 50 -b 16 --interval 5
 
 
 Training Copy
